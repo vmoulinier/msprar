@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<head>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>MSPR</title>
+    <script src='js/three.js'></script>
+    <script src="jsartoolkit5/artoolkit.min.js"></script>
+    <script src="jsartoolkit5/artoolkit.api.js"></script>
+    <script src="threex/threex-artoolkitsource.js"></script>
+    <script src="threex/threex-artoolkitcontext.js"></script>
+    <script src="threex/threex-arbasecontrols.js"></script>
+    <script src="threex/threex-armarkercontrols.js"></script>
+    <script src="threex/threex.videotexture.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+</head>
+<body>
+<a style="position: absolute; bottom:10px; right: 10px;" href="index.html"><button class="btn btn-primary">Reload</button></a>
+<script>
+
+    var scene, camera, renderer, clock, deltaTime, totalTime;
+    var arToolkitSource, arToolkitContext;
+    var markerRoot1, markerRoot2;
+    var mesh1;
+
+    initialize();
+    animate();
+
+    function getPositionOnScreen(camera, object3d) {
+        var vector = object3d.getWorldPosition().project(camera);
+        vector.x = Math.round((vector.x + 1) / 2 * window.innerWidth);
+        vector.y = Math.round(-(vector.y - 1) / 2 * window.innerHeight);
+        return vector;
+    }
+
+    function initialize()
+    {
+        scene = new THREE.Scene();
+
+        let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+        scene.add( ambientLight );
+
+        camera = new THREE.Camera();
+        scene.add(camera);
+
+        renderer = new THREE.WebGLRenderer({
+            antialias : true,
+            alpha: true
+        });
+        renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+        renderer.setSize( 640, 480 );
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.top = '0px';
+        renderer.domElement.style.left = '0px';
+        document.body.appendChild( renderer.domElement );
+
+        clock = new THREE.Clock();
+        deltaTime = 0;
+        totalTime = 0;
+
+        arToolkitSource = new THREEx.ArToolkitSource({
+            sourceType : 'webcam'
+        });
+
+        function onResize()
+        {
+            arToolkitSource.onResize();
+            arToolkitSource.copySizeTo(renderer.domElement);
+            if ( arToolkitContext.arController !== null )
+            {
+                arToolkitSource.copySizeTo(arToolkitContext.arController.canvas);
+            }
+        }
+
+        arToolkitSource.init(function onReady(){
+            onResize()
+        });
+
+        window.addEventListener('resize', function(){
+            onResize()
+        });
+
+        arToolkitContext = new THREEx.ArToolkitContext({
+            cameraParametersUrl: 'data/camera_para.dat',
+            detectionMode: 'mono'
+        });
+
+        arToolkitContext.init( function onCompleted(){
+            camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+        });
+
+        markerRoot1 = new THREE.Group();
+        scene.add(markerRoot1);
+        let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+            type: 'pattern', patternUrl: "data/hiro.patt"
+        });
+
+        //texture a partir de la caméra
+        var videoTexture = new THREE.Texture(arToolkitSource.domElement);
+        videoTexture.needsUpdate = true;
+
+        //texture haut du cube
+        var textureHaut = new THREE.Texture(arToolkitSource.domElement);
+        textureHaut.repeat.x = 100 / 800;
+        textureHaut.repeat.y = 100 / 2000;
+        textureHaut.offset.x = ( 300 / 100 ) * textureHaut.repeat.x;
+        textureHaut.offset.y = ( 400 / 100 ) * textureHaut.repeat.y;
+        textureHaut.needsUpdate = true;
+
+        //texture face avant du cube
+        var textureAvant = new THREE.Texture(arToolkitSource.domElement);
+        textureAvant.repeat.x = 100 / 800;
+        textureAvant.repeat.y = 100 / 1250;
+        textureAvant.offset.x = ( 300 / 100 ) * textureAvant.repeat.x;
+        textureAvant.offset.y = ( 400 / 100 ) * textureAvant.repeat.y;
+        textureAvant.needsUpdate = true;
+
+        //texture face gauche du cube
+        var textureGauche = new THREE.Texture(arToolkitSource.domElement);
+        textureGauche.repeat.x = 100 / 1500;
+        textureGauche.repeat.y = 100 / 800;
+        textureGauche.offset.x = ( 300 / 100 ) * textureGauche.repeat.x;
+        textureGauche.offset.y = ( 400 / 100 ) * textureGauche.repeat.y;
+        textureGauche.needsUpdate = true;
+
+        //texture face droite du cube
+        var textureDroite = new THREE.Texture(arToolkitSource.domElement);
+        textureDroite.repeat.x = 100 / 475;
+        textureDroite.repeat.y = 100 / 800;
+        textureDroite.offset.x = ( 300 / 100 ) * textureDroite.repeat.x;
+        textureDroite.offset.y = ( 400 / 100 ) * textureDroite.repeat.y;
+        textureDroite.needsUpdate = true;
+
+        //texture face arrière du cube
+        var textureArriere = new THREE.Texture(arToolkitSource.domElement);
+        textureArriere.repeat.x = 100 / 800;
+        textureArriere.repeat.y = 100 / 600;
+        textureArriere.offset.x = ( 300 / 100 ) * textureArriere.repeat.x;
+        textureArriere.offset.y = ( 400 / 100 ) * textureArriere.repeat.y;
+        textureArriere.needsUpdate = true;
+
+        //cube affiché
+        var materials = [
+            new THREE.MeshBasicMaterial( { map: textureDroite } ),
+            new THREE.MeshBasicMaterial( { map: textureGauche } ),
+            new THREE.MeshBasicMaterial( { map: textureHaut } ),
+            new THREE.MeshBasicMaterial( { map: videoTexture } ),
+            new THREE.MeshBasicMaterial( { map: textureAvant } ),
+            new THREE.MeshBasicMaterial( { map: textureArriere } )
+        ];
+        var faceMaterial = new THREE.MeshFaceMaterial( materials );
+        geometry = new THREE.CubeGeometry( 1, 1, 1 );
+        mesh1 = new THREE.Mesh( geometry, faceMaterial );
+        mesh1.position.y = 0.5;
+        markerRoot1.add( mesh1 );
+
+        var geometry = new THREE.SphereGeometry( .02, 32, 32 );
+        var material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+        var material2 = new THREE.MeshBasicMaterial( {color: 0xFE2E9A} );
+        var material3 = new THREE.MeshBasicMaterial( {color: 0x013ADF} );
+        var material4 = new THREE.MeshBasicMaterial( {color: 0x64FE2E} );
+        var material5 = new THREE.MeshBasicMaterial( {color: 0xFF0000} );
+
+        var numPoints = 4;
+
+        //droite
+        spline = new THREE.CatmullRomCurve3( [
+            new THREE.Vector3(0.55,0,0.5),
+            new THREE.Vector3(0.55,0,-.5),
+            new THREE.Vector3(1.55,0,-.5),
+            new THREE.Vector3(1.55,0,.5),
+            new THREE.Vector3(0.55,0,0.5)
+        ] );
+        var geometryc = new THREE.Geometry();
+        var splinePoints = spline.getPoints(numPoints);
+        for(var a = 0; a < splinePoints.length; a++){
+            geometryc.vertices.push(splinePoints[a]);
+        }
+        var line = new THREE.Line(geometryc);
+        markerRoot1.add(line);
+
+        //gauche
+        spline2 = new THREE.CatmullRomCurve3( [
+            new THREE.Vector3(-0.55,0,0.5),
+            new THREE.Vector3(-0.55,0,-.5),
+            new THREE.Vector3(-1.55,0,-.5),
+            new THREE.Vector3(-1.55,0,.5),
+            new THREE.Vector3(-0.55,0,0.5)
+        ] );
+        var geometryc2 = new THREE.Geometry();
+        var splinePoints2 = spline2.getPoints(numPoints);
+        for(var a = 0; a < splinePoints2.length; a++){
+            geometryc2.vertices.push(splinePoints2[a]);
+        }
+        var line2 = new THREE.Line(geometryc2);
+        markerRoot1.add(line2);
+
+        //haut
+        spline3 = new THREE.CatmullRomCurve3( [
+            new THREE.Vector3(-0.5,0,-1.55),
+            new THREE.Vector3(0.5,0,-1.55),
+            new THREE.Vector3(0.5,0,-.55),
+            new THREE.Vector3(-0.5,0,-.55),
+            new THREE.Vector3(-0.5,0,-1.55)
+        ] );
+        var geometryc3 = new THREE.Geometry();
+        var splinePoints3 = spline3.getPoints(numPoints);
+        for(var a = 0; a < splinePoints3.length; a++){
+            geometryc3.vertices.push(splinePoints3[a]);
+        }
+        var line3 = new THREE.Line(geometryc3);
+        markerRoot1.add(line3);
+
+        //bas
+        spline4 = new THREE.CatmullRomCurve3( [
+            new THREE.Vector3(0.5,0,1.55),
+            new THREE.Vector3(-0.5,0,1.55),
+            new THREE.Vector3(-0.5,0,0.55),
+            new THREE.Vector3(0.5,0,0.55),
+            new THREE.Vector3(0.5,0,1.55)
+        ] );
+        var geometryc4 = new THREE.Geometry();
+        var splinePoints4 = spline4.getPoints(numPoints);
+        for(var a = 0; a < splinePoints4.length; a++){
+            geometryc4.vertices.push(splinePoints4[a]);
+        }
+        var line4 = new THREE.Line(geometryc4);
+        markerRoot1.add(line4);
+
+        //bas2
+        spline5 = new THREE.CatmullRomCurve3( [
+            new THREE.Vector3(0.5,0,2.6),
+            new THREE.Vector3(-0.5,0,2.6),
+            new THREE.Vector3(-0.5,0,1.6),
+            new THREE.Vector3(0.5,0,1.6),
+            new THREE.Vector3(0.5,0,2.6)
+        ] );
+
+        var geometryc5 = new THREE.Geometry();
+        var splinePoints5 = spline5.getPoints(numPoints);
+        for(var a = 0; a < splinePoints5.length; a++){
+            geometryc5.vertices.push(splinePoints5[a]);
+        }
+        var line5 = new THREE.Line(geometryc5);
+        markerRoot1.add(line5);
+
+        function getPositionOnScreen(camera, object3d) {
+            var vector = object3d.getWorldPosition().project(camera);
+            vector.x = Math.round((vector.x + 1) / 2 * window.innerWidth);
+            vector.y = Math.round(-(vector.y - 1) / 2 * window.innerHeight);
+            return vector;
+        }
+
+        //quand marker detecté
+        markerControls1.addEventListener('markerFound', function(event){
+
+        });
+
+        //CARRE DE DROITE
+        //point bas à gauche
+        var sphere = new THREE.Mesh( geometry, material );
+        sphere.position.set(0.55,0,0.5);
+        markerRoot1.add( sphere );
+
+        //point haut à gauche
+        var sphere2 = new THREE.Mesh( geometry, material );
+        sphere2.position.set(0.55,0,-.5);
+        markerRoot1.add( sphere2 );
+
+        //point bas à droite
+        var sphere3 = new THREE.Mesh( geometry, material );
+        sphere3.position.set(1.55,0,-.5);
+        markerRoot1.add( sphere3 );
+
+        //point haut à droite
+        var sphere4 = new THREE.Mesh( geometry, material );
+        sphere4.position.set(1.55,0,.5);
+        markerRoot1.add( sphere4 );
+
+
+        //CARRE DE GAUCHE
+        //point bas à droite
+        var sphere5 = new THREE.Mesh( geometry, material2 );
+        sphere5.position.set(-0.55,0,0.5);
+        markerRoot1.add( sphere5 );
+
+        //point haut à droite
+        var sphere6 = new THREE.Mesh( geometry, material2 );
+        sphere6.position.set(-0.55,0,-.5);
+        markerRoot1.add( sphere6 );
+
+        //point haut à gauche
+        var sphere7 = new THREE.Mesh( geometry, material2 );
+        sphere7.position.set(-1.55,0,-.5);
+        markerRoot1.add( sphere7 );
+
+        //point bas à gauche
+        var sphere8 = new THREE.Mesh( geometry, material2 );
+        sphere8.position.set(-1.55,0,.5);
+        markerRoot1.add( sphere8 );
+
+
+        //CARRE DU HAUT
+        //point en haut à gauche
+        var sphere10 = new THREE.Mesh( geometry, material3 );
+        sphere10.position.set(-0.5,0,-1.55);
+        markerRoot1.add( sphere10 );
+
+        //point en haut à droite
+        var sphere9 = new THREE.Mesh( geometry, material3 );
+        sphere9.position.set(0.5,0,-1.55);
+        markerRoot1.add( sphere9 );
+
+        //point en bas à droite
+        var sphere111 = new THREE.Mesh( geometry, material3 );
+        sphere111.position.set(0.5,0,-.55);
+        markerRoot1.add( sphere111 );
+
+        //point en bas à gauche
+        var sphere66 = new THREE.Mesh( geometry, material3 );
+        sphere66.position.set(-0.5,0,-.55);
+        markerRoot1.add( sphere66 );
+
+
+        //CARRE DU BAS 1
+        //point en bas à droite
+        var sphere13 = new THREE.Mesh( geometry, material4 );
+        sphere13.position.set(0.5,0,1.55);
+        markerRoot1.add( sphere13 );
+
+        //point en bas à gauche
+        var sphere14 = new THREE.Mesh( geometry, material4 );
+        sphere14.position.set(-0.5,0,1.55);
+        markerRoot1.add( sphere14 );
+
+        //point en haut à droite
+        var sphere15 = new THREE.Mesh( geometry, material4 );
+        sphere15.position.set(0.5,0,0.55);
+        markerRoot1.add( sphere15 );
+
+        //point en haut à gauche
+        var sphere16 = new THREE.Mesh( geometry, material4 );
+        sphere16.position.set(-0.5,0,0.55);
+        markerRoot1.add( sphere16 );
+
+        //CARRE DU BAS 2
+        //point en bas à droite
+        var sphere17 = new THREE.Mesh( geometry, material5 );
+        sphere17.position.set(0.5,0,2.6);
+        markerRoot1.add( sphere17 );
+
+        //point en bas à gauche
+        var sphere18 = new THREE.Mesh( geometry, material5 );
+        sphere18.position.set(-0.5,0,2.6);
+        markerRoot1.add( sphere18 );
+
+        //point en haut à droite
+        var sphere19 = new THREE.Mesh( geometry, material5 );
+        sphere19.position.set(0.5,0,1.6);
+        markerRoot1.add( sphere19 );
+
+        //point en haut à gauche
+        var sphere20 = new THREE.Mesh( geometry, material5 );
+        sphere20.position.set(-0.5,0,1.6);
+        markerRoot1.add( sphere20);
+    }
+
+    function update()
+    {
+        if ( arToolkitSource.ready !== false ) {
+            arToolkitContext.update(arToolkitSource.domElement);
+        }
+    }
+
+    function render()
+    {
+        renderer.render( scene, camera );
+    }
+
+    function animate()
+    {
+        requestAnimationFrame(animate);
+        deltaTime = clock.getDelta();
+        totalTime += deltaTime;
+        update();
+        render();
+    }
+</script>
+</body>
+</html>
